@@ -88,14 +88,14 @@ class owmWeather {
   WiFiClient client;
   HTTPClient http;
   CurrentWeather weatherNow;
-  String owmHost = "http://api.openweathermap.org/data/2.5/weather?appid=" + (String)OW_API_KEY +
+  String currentWeatherHost = "http://api.openweathermap.org/data/2.5/weather?appid=" + (String)OW_API_KEY +
                    "&id=" + OW_CITY_CODE + "&units=imperial";
  public:  
   TaskHandle_t xhandlegetWeatherHandle = NULL;
 
   void getCurrentWeather(){
     http.useHTTP10(true);
-    http.begin(owmHost);
+    http.begin(currentWeatherHost);
     // Send HTTP GET request
     int httpResponseCode = http.GET();
 
@@ -145,7 +145,7 @@ class owmWeather {
   int getWindDirection() { return (int)weatherNow.windDeg; }
   String getCityName() { return weatherNow.cityName; }
 
-  void dump(Stream *_stream) {
+  void dumpCurrentWeather(Stream *_stream) {
     char scratch[26];
     _stream->println();
     _stream->println("lon : " + (String)weatherNow.lon);

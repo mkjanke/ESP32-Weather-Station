@@ -19,6 +19,7 @@ void handleNextion(void*);
 TaskHandle_t xhandleNextionHandle = NULL;
 
 void getWeather(void* parameter);
+void getForecast(void* parameter);
 void heartbeat();
 
 void setup() {
@@ -51,7 +52,10 @@ void setup() {
   xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
 
   ruuviScan.begin();
+  delay(1000);
   xTaskCreate(getWeather, "Weather Handler", 5000, NULL, 6, &currentWeather.xhandlegetWeatherHandle);
+  delay(10000);
+  xTaskCreate(getForecast, "Forecast Handler", 5000, NULL, 6, &latestForecast.xhandlegetForecastHandle);
 }
 
 void loop() {
@@ -74,14 +78,6 @@ void loop() {
   } else{
     myNex.writeCmd("outdoorTemp.pco=19049");
   }
-  myNex.writeNum((String) "humidity.val", currentWeather.getHumidity());
-  myNex.writeNum((String) "atmPressure.val", currentWeather.getPressure());
-  myNex.writeStr((String) "wxDescription.txt", currentWeather.getDescription());
-  myNex.writeStr((String) "weatherIcon.txt", currentWeather.getIcon());
-  myNex.writeNum((String) "windSpeed.val", currentWeather.getWindSpeed());
-  myNex.writeNum((String) "windDirection.val", currentWeather.getWindDirection());
-  myNex.writeStr((String) "City.txt", currentWeather.getCityName());
-
   heartbeat();
   delay(10000);
 }
@@ -92,16 +88,25 @@ void getWeather(void* parameter) {
   for (;;) {  // ever
     Serial.println("Calling currentWeather()");
     currentWeather.getCurrentWeather();
-    currentWeather.dump(&Serial);
+    // currentWeather.dumpCurrentWeather(&Serial);
+    myNex.writeNum((String) "humidity.val", currentWeather.getHumidity());
+    myNex.writeNum((String) "atmPressure.val", currentWeather.getPressure());
+    myNex.writeStr((String) "wxDescription.txt", currentWeather.getDescription());
+    myNex.writeStr((String) "weatherIcon.txt", currentWeather.getIcon());
+    myNex.writeNum((String) "windSpeed.val", currentWeather.getWindSpeed());
+    myNex.writeNum((String) "windDirection.val", currentWeather.getWindDirection());
+    myNex.writeStr((String) "City.txt", currentWeather.getCityName());
+
     vTaskDelay(120000 / portTICK_PERIOD_MS);
   }
 }
 
 void heartbeat() {
   myNex.writeNum("heartbeat", 1);
-  Serial.printf("N: %i W: %i H: %i\n", 
+  Serial.printf("N: %i W: %i F: %i H: %i\n", 
                 uxTaskGetStackHighWaterMark(xhandleNextionHandle),
                 uxTaskGetStackHighWaterMark(currentWeather.xhandlegetWeatherHandle), 
+                uxTaskGetStackHighWaterMark(latestForecast.xhandlegetForecastHandle), 
                 esp_get_minimum_free_heap_size());
 }
 
