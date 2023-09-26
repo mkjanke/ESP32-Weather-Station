@@ -5,6 +5,10 @@
 * Displays weather by updating objects on Nextion Intellegent Display
 * Displays 5-day forecast by updating Nextion objects using data from Openweathermap API
 
+### Issues
+
+Likely has memory leaks, may occasinally crash. 
+
 ### Libraries/Dependencies
 
 *  Uses NimBLE (Bluetooth) to scan Ruuvi tags. 
