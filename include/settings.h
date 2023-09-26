@@ -5,10 +5,10 @@
 #define WIFI_PASSWORD "WTR54G2222"
 #define DEVICE_NAME "ESP-Weather"
 
-#define OW_API_KEY "593a37132264f8670b2075f2925b6365"
+#define OW_API_KEY "44196d9808785b1893057154d5b1521a"
 #define OW_CITY_CODE "5045360"
-
-#define HEARTBEAT 1000L         // Sensor and WiFi loop delay (ms)
+#define OW_LAT 45
+#define OW_LON -93
 
 #define RUUVI_5_SERVICE_ID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define RUUVI_INDOOR_TAG "Ruuvi CC37"
@@ -22,5 +22,4 @@
 #define RXDN 19
 #define TXDN 21
 
-
-#endif //SETTINGS_H
+#endif  // SETTINGS_H

@@ -21,18 +21,14 @@ class RuuviTag {
   }
   std::string getName() { return _tagname; }
   std::string getDescription() { return _description; }
-  void setTemperature(float temp) { 
+  void setTemperature(float temp) {
     time(&_lastUpdate);
-    _temperature = temp; 
+    _temperature = temp;
   }
   void setHumidity(int humidity) { _humidity = humidity; }
   void setPressure(int pressure) { _pressure = pressure; }
-  int getTemperatureInC() { 
-    return (int)(_temperature + (_temperature >=0 ? .5 : -.5)); 
-  }
-  int getTemperatureInF() {
-    return (int)((((9.0f / 5) * (double)_temperature) + 32) + (_temperature >=0 ? .5 : -.5));
-  }
+  int getTemperatureInC() { return (int)(_temperature + (_temperature >= 0 ? .5 : -.5)); }
+  int getTemperatureInF() { return (int)((((9.0f / 5) * (double)_temperature) + 32) + (_temperature >= 0 ? .5 : -.5)); }
   int getHumidity() { return _humidity; }
   int getPressureInPascal() { return _pressure; }
   int getPressureInMmHg() { return (int)(((double)_pressure) / 133.3223684); }
@@ -41,7 +37,7 @@ class RuuviTag {
 
 RuuviTag indoorTag((std::string)RUUVI_INDOOR_TAG, RUUVI_INDOOR_DESCRIPTION);
 RuuviTag outdoorTag((std::string)RUUVI_OUTDOOR_TAG, RUUVI_OUTDOOR_DESCRIPTION);
-std::vector<RuuviTag *> ruuviList = {&indoorTag, &outdoorTag};
+std::vector<RuuviTag*> ruuviList = {&indoorTag, &outdoorTag};
 
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
   void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
@@ -54,7 +50,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       if (((byte)advertisedDevice->getManufacturerData().data()[0] == 0x99) &&
           ((byte)advertisedDevice->getManufacturerData().data()[1] == 0x04)) {
         std::string output = advertisedDevice->getName() + " " + advertisedDevice->getAddress().toString() + " ";
-        Serial.println(output.c_str());
+        Serial.print(output.c_str());
 
         char* manufacturerdata =
             NimBLEUtils::buildHexData(NULL, (uint8_t*)advertisedDevice->getManufacturerData().data(),
@@ -86,13 +82,14 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
 
           for (auto element : ruuviList) {
             if (advertisedDevice->getName() == element->getName()) {
+              Serial.print(": ");
               Serial.print(element->getDescription().c_str());
               element->setTemperature(tempInC);
               element->setHumidity(humPct);
               element->setPressure(atmPressure);
-              Serial.printf(" Temperature (C): %d Temperature (F): %d Humidity(%): %d Atm Pressure: %d\n", 
-                            element->getTemperatureInC(), element->getTemperatureInF(),
-                            element->getHumidity(), element->getPressureInMmHg());
+              Serial.printf(" Temperature (C): %d Temperature (F): %d Humidity(%): %d Atm Pressure: %d\n",
+                            element->getTemperatureInC(), element->getTemperatureInF(), element->getHumidity(),
+                            element->getPressureInMmHg());
             }
           }
         }
