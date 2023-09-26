@@ -9,15 +9,16 @@
 #include "weather.h"
 
 RuuviScan ruuviScan;
-owmWeather currentWeather;
+
+owmWeather currentWeather((String)OW_CITY, (float)OW_LAT, (float)OW_LON, (String)OW_API_KEY);
+void getWeather(void* parameter);
+int weatherIconToNextionPicture(String);
+
 Time currentTime;
 
 myNextionInterface myNex(NEXTION_SERIAL, NEXTION_BAUD);
 void handleNextion(void*);
 TaskHandle_t xhandleNextionHandle = NULL;
-
-void getWeather(void* parameter);
-int weatherIconToNextionPicture(String);
 
 void heartbeat();
 
@@ -68,6 +69,9 @@ void loop() {
   Serial.println(asctime(&timei));
 
   ruuviScan.checkIsRunning();
+
+  // Update Nextion screen
+  // Dim screen objects if more than 10 minutes between Ruuvi reads
   if ((now - indoorTag.lastUpdate()) < 600) {
     myNex.writeNum((String) "indoorTemp.val", indoorTag.getTemperatureInF());
     myNex.writeCmd("indoorTemp.pco=65535");
@@ -133,8 +137,8 @@ int weatherIconToNextionPicture(String iconTxt) {
       {"11n", 10},  // Thunderstorm Night
       {"13d", 7},   // Snow Day
       {"13n", 9},   // Snow Night
-      {"50d", 3},   // Mist Day
-      {"50n", 3},   // Mist Night
+      {"50d", 0},   // Mist Day
+      {"50n", 0},   // Mist Night
   };
 
   return iconMap[iconTxt];

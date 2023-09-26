@@ -1,19 +1,18 @@
 #ifndef LOCALTIME_H
 #define LOCALTIME_H
 
-#include <WiFi.h>
-
-#include "esp_sntp.h"
-#include "time.h"
-
 /*----------------------------------------------------------------
-  Simple interface into SNTP time
+  Simple interface into ESP32 SNTP time
 
-    Initializes SNTP client on ESP32, provides access to current time as struct, and as inidividual elements.
+    Initializes SNTP client on ESP32, provides access to current time as struct, and as individual elements.
 
     begin() must be called once, after WiFi is initialized.
 
 */
+
+#include <WiFi.h>
+#include "esp_sntp.h"
+#include "time.h"
 
 #define NTP_SERVER_1 "pool.ntp.org"
 #define NTP_SERVER_2 "time.nist.gov"

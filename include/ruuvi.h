@@ -1,7 +1,14 @@
 #ifndef RUUVI_H
 #define RUUVI_H
-#include <vector>
 
+/* Ruuvi related classes and code.
+
+  RuuviTag Object - one instance per tag
+  RuuviScan Object - one instance
+
+*/
+
+#include <vector>
 #include "NimBLEDevice.h"
 #include "settings.h"
 
@@ -60,7 +67,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
           free(manufacturerdata);
         }
         uint8_t* MFRdata;
-        float tempInC;
+        float tempInC = 0;
         float humPct = 0;
         float atmPressure = 0;
 

@@ -7,56 +7,161 @@
 #include "time.h"
 
 /*----------------------------------------------------------------
-Wrapper for OpenWeather API call (current weather, version 2.5)
+owmWeather object: Wrapper for OpenWeather API call (onecall API, version 3.0)
+
+Returns current weather + 8-day forecast, filtered for minimum required data
 
 Example:
 
-curl "http://api.openweathermap.org/data/2.5/weather?id=5045360&appid=xxxxyourapikeyxxx"
+ curl
+"https://api.openweathermap.org/data/3.0/onecall?exclude=minutely,hourly,&units=imperial&lon=-93&lat=45&appid=xxxxxxxxxxxxx"
 
-Open Weather API JSON return format (St. Paul MN, 5045360):
-{
-  "coord": {
-    "lon": -93.0933,
-    "lat": 44.9444
-  },
-  "weather": [
+  Sample return (filtered using ArduinoJSON filter):
+
     {
-      "id": 802,
-      "main": "Clouds",
-      "description": "scattered clouds",
-      "icon": "03d"
+      "lat": 45,
+      "lon": -93,
+      "current": {
+        "dt": 1695674616,
+        "temp": 62.26,
+        "feels_like": 62.6,
+        "pressure": 1017,
+        "humidity": 94,
+        "clouds": 100,
+        "wind_speed": 6.91,
+        "wind_deg": 100,
+        "weather": [
+          {
+            "id": 804,
+            "main": "Clouds",
+            "description": "overcast clouds",
+            "icon": "04d"
+          }
+        ]
+      },
+      "daily": [
+        {
+          "dt": 1695664800,
+          "temp": {
+            "min": 58.21,
+            "max": 63.21
+          },
+          "weather": [
+            {
+              "id": 501,
+              "main": "Rain",
+              "description": "moderate rain",
+              "icon": "10d"
+            }
+          ]
+        },
+        {
+          "dt": 1695751200,
+          "temp": {
+            "min": 58.64,
+            "max": 61.92
+          },
+          "weather": [
+            {
+              "id": 500,
+              "main": "Rain",
+              "description": "light rain",
+              "icon": "10d"
+            }
+          ]
+        },
+        {
+          "dt": 1695837600,
+          "temp": {
+            "min": 55.35,
+            "max": 66.25
+          },
+          "weather": [
+            {
+              "id": 500,
+              "main": "Rain",
+              "description": "light rain",
+              "icon": "10d"
+            }
+          ]
+        },
+        {
+          "dt": 1695924000,
+          "temp": {
+            "min": 59.76,
+            "max": 74.35
+          },
+          "weather": [
+            {
+              "id": 802,
+              "main": "Clouds",
+              "description": "scattered clouds",
+              "icon": "03d"
+            }
+          ]
+        },
+        {
+          "dt": 1696010400,
+          "temp": {
+            "min": 59.5,
+            "max": 86.49
+          },
+          "weather": [
+            {
+              "id": 501,
+              "main": "Rain",
+              "description": "moderate rain",
+              "icon": "10d"
+            }
+          ]
+        },
+        {
+          "dt": 1696096800,
+          "temp": {
+            "min": 70.03,
+            "max": 91.56
+          },
+          "weather": [
+            {
+              "id": 803,
+              "main": "Clouds",
+              "description": "broken clouds",
+              "icon": "04d"
+            }
+          ]
+        },
+        {
+          "dt": 1696183200,
+          "temp": {
+            "min": 70.2,
+            "max": 91.54
+          },
+          "weather": [
+            {
+              "id": 802,
+              "main": "Clouds",
+              "description": "scattered clouds",
+              "icon": "03d"
+            }
+          ]
+        },
+        {
+          "dt": 1696269600,
+          "temp": {
+            "min": 70.65,
+            "max": 91.33
+          },
+          "weather": [
+            {
+              "id": 500,
+              "main": "Rain",
+              "description": "light rain",
+              "icon": "10d"
+            }
+          ]
+        }
+      ]
     }
-  ],
-  "base": "stations",
-  "main": {
-    "temp": 64.44,
-    "feels_like": 63.27,
-    "temp_min": 61.63,
-    "temp_max": 69.66,
-    "pressure": 1020,
-    "humidity": 57
-  },
-  "visibility": 10000,
-  "wind": {
-    "speed": 11.5,
-    "deg": 330
-  },
-  "clouds": {
-    "all": 40
-  },
-  "dt": 1694550441,
-  "sys": {
-    "type": 1,
-    "id": 5934,
-    "country": "US",
-    "sunrise": 1694519241,
-    "sunset": 1694565024
-  },
-  "timezone": -18000,
-  "id": 5045360,
-  "name": "Saint Paul",
-  "cod": 200
-}
 */
 
 struct CurrentWeather {
@@ -70,7 +175,6 @@ struct CurrentWeather {
   uint16_t pressure;       // "pressure": 1013,
   uint8_t humidity;        // "humidity": 87,
   uint8_t feelsLike;       // "feelsLike: 63.78"
-  uint16_t visibility;     // visibility: 10000,
   float windSpeed;         // "wind": {"speed": 1.5},
   float windDeg;           // "wind": {deg: 226.505},
   uint8_t clouds;          // "clouds": {"all": 90},
@@ -90,18 +194,26 @@ struct ForecastWeather {
 
 class owmWeather {
  private:
+  String _cityName;
+  float _latitude;
+  float _longitude;
   HTTPClient http;
-  CurrentWeather weatherNow;        // Current Weather via API 3.0
-  ForecastWeather forecast[8];      // Forecast - Eight days forcast availabe in API 3.0
-  StaticJsonDocument<768> filter;   // ArduinoJSON Filter Document
+  CurrentWeather weatherNow;       // Current Weather via API 3.0
+  ForecastWeather forecast[8];     // Forecast - Eight day forecast availabe in API 3.0
+  StaticJsonDocument<768> filter;  // ArduinoJSON Filter Document
 
-  String currentWeatherHost = "http://api.openweathermap.org/data/3.0/onecall?appid=" + (String)OW_API_KEY +
-                              "&lat=" + OW_LAT + "&lon=" + OW_LON + "&units=imperial";
+  String currentWeatherHost;
 
  public:
   TaskHandle_t xhandlegetWeatherHandle = NULL;
 
-  owmWeather() {
+  owmWeather(String cityName, float lat, float lon, String owAPIKey) {
+    _cityName = cityName;
+    _latitude = lat;
+    _longitude = lon;
+    currentWeatherHost = "http://api.openweathermap.org/data/3.0/onecall?appid=" + owAPIKey + "&lat=" + _latitude +
+                         "&lon=" + _longitude + "&units=imperial";
+
     // Populate ArduinoJSON filter document
     // Reduce size of ArduinoJSON 'doc' document
     filter["lon"] = true;
@@ -189,7 +301,7 @@ class owmWeather {
   String getCurrentWeatherIcon() { return weatherNow.icon; }
   int getCurrentWeatherWindSpeed() { return (int)weatherNow.windSpeed; }
   int getCurrentWeatherWindDirection() { return (int)weatherNow.windDeg; }
-  String getCurrentWeatherCityName() { return weatherNow.cityName; }
+  String getCurrentWeatherCityName() { return _cityName; }
 
   time_t getForecastObservationTime(int i) { return forecast[i].observationTime; }
   String getForecastObservationDayofWeek(int i) {
@@ -200,8 +312,8 @@ class owmWeather {
     return (String)buffer;
   }
   String getForecastDescription(int i) { return forecast[i].description; }
-  int getForecastTempMin(int i) { return (int)forecast[i].tempMin; }
-  int getForecastTempMax(int i) { return (int)forecast[i].tempMax; }
+  int getForecastTempMin(int i) { return (int)(forecast[i].tempMin + (forecast[i].tempMin >= 0 ? .5 : -.5)); }
+  int getForecastTempMax(int i) { return (int)(forecast[i].tempMax + (forecast[i].tempMax >= 0 ? .5 : -.5)); }
   int getForecastWeatherId(int i) { return (int)forecast[i].weatherId; }
   String getForecastIcon(int i) { return forecast[i].icon; }
   String getForecastMain(int i) { return forecast[i].main; }
@@ -223,7 +335,7 @@ class owmWeather {
     _stream->println("wind dir : " + (String)weatherNow.windDeg);
     _stream->println("clouds : " + (String)weatherNow.clouds);
     _stream->print("timestamp : " + (String)ctime_r(&weatherNow.observationTime, scratch));
-    _stream->println("city : " + weatherNow.cityName);
+    _stream->println("city : " + (String)OW_CITY);
     _stream->println();
 
     for (int i = 0; i < 8; i++) {
