@@ -31,6 +31,7 @@ Assumes Nextion device has at least the following objects/variables:
 | Variable (int32) | windDirection | Wind direction in degrees |
 | Number | windSpeed | Wind speed in MPH/KPH |
 | Number | humidity | Humidity in Percent |
+| Text | statusTxt.txt | Connection status text |
 | Number | forecastMin1 | Min temp, Max temp, Date, Icon Number and description for next day forecast | |
 | Number | forecastMax1 | |
 | Text | dateTime1 | |

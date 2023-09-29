@@ -244,16 +244,15 @@ class owmWeather {
 
   // Call Openweather API
   // Populate CurrentWeather and ForecastWeather structs
-  void updateCurrentWeather() {
+  int updateCurrentWeather() {
     http.useHTTP10(true);
     http.begin(currentWeatherHost);
     // Send HTTP GET request
     int httpResponseCode = http.GET();
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
 
-    if (httpResponseCode > 0) {
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-
+    if (httpResponseCode == 200) {
       StaticJsonDocument<2048> doc;
       deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
       // Serial.println("JSON DOC:");
@@ -292,6 +291,7 @@ class owmWeather {
     }
     // Free resources
     http.end();
+    return httpResponseCode;
   }
 
   String getCurrentWeatherDescription() { return weatherNow.description; }
@@ -302,6 +302,7 @@ class owmWeather {
   int getCurrentWeatherWindSpeed() { return (int)weatherNow.windSpeed; }
   int getCurrentWeatherWindDirection() { return (int)weatherNow.windDeg; }
   String getCurrentWeatherCityName() { return _cityName; }
+  time_t getCurrentWeatherObservationTime() { return weatherNow.observationTime; }
 
   time_t getForecastObservationTime(int i) { return forecast[i].observationTime; }
   String getForecastObservationDayofWeek(int i) {

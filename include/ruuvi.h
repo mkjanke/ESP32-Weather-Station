@@ -133,7 +133,8 @@ class RuuviScan {
     // If an error occurs that stops the scan, it will be restarted here.
     if (pBLEScan->isScanning() == false) {
       // Start scan with: duration = 0 seconds(forever), no scan end callback, not a continuation of a previous scan.
-      pBLEScan->start(0, nullptr, false);
+      Serial.println("Restarting Scan");
+      pBLEScan->start(60, nullptr, false);
     }
     // Free memory from unused devices?
     if (pBLEScan->isScanning() && (pBLEScan->getResults().getCount() > 10)) {

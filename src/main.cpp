@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <FastLED.h>
 #include <WiFi.h>
 
 #include "localtime.h"
@@ -20,6 +21,12 @@ myNextionInterface myNex(NEXTION_SERIAL, NEXTION_BAUD);
 void handleNextion(void*);
 TaskHandle_t xhandleNextionHandle = NULL;
 
+// FastLED
+#define NUM_LEDS 1         // Number of RGB LED beads
+#define DATA_PIN 27        // The pin for controlling RGB LED
+#define LED_TYPE NEOPIXEL  // RGB LED strip type
+CRGB leds[NUM_LEDS];       // Instantiate RGB LED
+
 void heartbeat();
 
 void setup() {
@@ -28,14 +35,21 @@ void setup() {
   Serial.println(DEVICE_NAME + (String) " is Woke");
   delay(2000);
 
+  FastLED.addLeds<SK6812, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
+  FastLED.setBrightness(127);
+
+  // Start Nextion task
+  myNex.begin();  // Initialize Nextion interface
+  xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
+
+  // Initialize Ruuvi BLE scanner
+  ruuviScan.begin();
+  delay(1000);
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.setHostname(DEVICE_NAME);
+  WiFi.setAutoReconnect(true);
   uint8_t status = WiFi.waitForConnectResult();
-
-  // Initialize OTA Update libraries
-  ArduinoOTA.setHostname(DEVICE_NAME);
-  ArduinoOTA.begin();
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(5000);
     Serial.print(".");
@@ -46,16 +60,12 @@ void setup() {
   Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
 
+  // Initialize OTA Update libraries
+  ArduinoOTA.setHostname(DEVICE_NAME);
+  ArduinoOTA.begin();
+
   // Start SNTP task
   currentTime.begin();
-
-  // Start Nextion task
-  myNex.begin();  // Initialize Nextion interface
-  xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
-
-  // Initialize Ruuvi BLE scanner
-  ruuviScan.begin();
-  delay(1000);
 
   // Start Openweather API task
   xTaskCreate(getWeather, "Weather Handler", 6000, NULL, 6, &currentWeather.xhandlegetWeatherHandle);
@@ -73,14 +83,26 @@ void loop() {
   // Update Nextion screen
   // Dim screen objects if more than 10 minutes between Ruuvi reads
   if ((now - indoorTag.lastUpdate()) < 600) {
+    leds[0] = CRGB::Green;  // LED shows red light
+    FastLED.show();
     myNex.writeNum((String) "indoorTemp.val", indoorTag.getTemperatureInF());
     myNex.writeCmd("indoorTemp.pco=65535");
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    leds[0] = CRGB(0, 0, 0);  // LED oFF
+    FastLED.show();
+
   } else {
     myNex.writeCmd("indoorTemp.pco=19049");
   }
   if ((now - outdoorTag.lastUpdate()) < 600) {
+    leds[0] = CRGB::Blue;  // LED shows red light
+    FastLED.show();
     myNex.writeNum((String) "outdoorTemp.val", outdoorTag.getTemperatureInF());
     myNex.writeCmd("outdoorTemp.pco=65535");
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    leds[0] = CRGB(0, 0, 0);  // LED oFF
+    FastLED.show();
   } else {
     myNex.writeCmd("outdoorTemp.pco=19049");
   }
@@ -91,28 +113,43 @@ void loop() {
 // Weather thread
 // Get weather from OpenWeatherMap every two minutes
 void getWeather(void* parameter) {
+  int status = 0;
   for (;;) {  // ever
+
+    leds[0] = CRGB::Red;  // LED shows red light
+    FastLED.show();
+
     Serial.println("Calling currentWeather()");
-    currentWeather.updateCurrentWeather();
-    // currentWeather.dumpCurrentWeather(&Serial);
-    myNex.writeNum((String) "humidity.val", currentWeather.getCurrentWeatherHumidity());
-    myNex.writeStr((String) "wxDescription.txt", currentWeather.getCurrentWeatherDescription());
-    myNex.writeNum((String) "windSpeed.val", currentWeather.getCurrentWeatherWindSpeed());
-    myNex.writeNum((String) "windDirection.val", currentWeather.getCurrentWeatherWindDirection());
-    myNex.writeStr((String) "City.txt", currentWeather.getCurrentWeatherCityName());
-    myNex.writeCmd((String) "wxIcon.pic=" +
-                   (String)weatherIconToNextionPicture(currentWeather.getCurrentWeatherIcon()));
+    status = currentWeather.updateCurrentWeather();
+    if (status == 200) {
+      // currentWeather.dumpCurrentWeather(&Serial);
+      myNex.writeNum((String) "humidity.val", currentWeather.getCurrentWeatherHumidity());
+      myNex.writeStr((String) "wxDescription.txt", currentWeather.getCurrentWeatherDescription());
+      myNex.writeNum((String) "windSpeed.val", currentWeather.getCurrentWeatherWindSpeed());
+      myNex.writeNum((String) "windDirection.val", currentWeather.getCurrentWeatherWindDirection());
+      myNex.writeStr((String) "City.txt", currentWeather.getCurrentWeatherCityName());
+      myNex.writeCmd((String) "wxIcon.pic=" +
+                     (String)weatherIconToNextionPicture(currentWeather.getCurrentWeatherIcon()));
 
-    // Five day forecast
-    for (int i = 1; i <= 5; i++) {
-      myNex.writeStr((String) "dateTime" + (String)i + ".txt", currentWeather.getForecastObservationDayofWeek(i));
-      myNex.writeStr((String) "forecastTxt" + (String)i + ".txt", (String)currentWeather.getForecastDescription(i));
-      myNex.writeNum((String) "forecastMin" + (String)i + ".val", currentWeather.getForecastTempMin(i));
-      myNex.writeNum((String) "forecastMax" + (String)i + ".val", currentWeather.getForecastTempMax(i));
-      myNex.writeCmd((String) "forecastIcon" + (String)i +
-                     ".pic=" + (String)weatherIconToNextionPicture(currentWeather.getForecastIcon(i)));
+      time_t now = currentWeather.getCurrentWeatherObservationTime();
+      char str[20];
+      strftime(str, sizeof(str), "%a %H:%M", localtime(&now));
+      myNex.writeStr("statusTxt.txt", str);
+
+      // Five day forecast
+      for (int i = 1; i <= 5; i++) {
+        myNex.writeStr((String) "dateTime" + (String)i + ".txt", currentWeather.getForecastObservationDayofWeek(i));
+        myNex.writeStr((String) "forecastTxt" + (String)i + ".txt", (String)currentWeather.getForecastDescription(i));
+        myNex.writeNum((String) "forecastMin" + (String)i + ".val", currentWeather.getForecastTempMin(i));
+        myNex.writeNum((String) "forecastMax" + (String)i + ".val", currentWeather.getForecastTempMax(i));
+        myNex.writeCmd((String) "forecastIcon" + (String)i +
+                       ".pic=" + (String)weatherIconToNextionPicture(currentWeather.getForecastIcon(i)));
+      }
+      leds[0] = CRGB(0, 0, 0);  // LED oFF
+      FastLED.show();
+    } else {
+      myNex.writeStr("statusTxt.txt", "OW Call Fail");
     }
-
     vTaskDelay(120000 / portTICK_PERIOD_MS);
   }
 }
@@ -147,8 +184,7 @@ int weatherIconToNextionPicture(String iconTxt) {
 void heartbeat() {
   myNex.writeNum("heartbeat", 1);
   Serial.printf("N: %i W: %i H: %i\n", uxTaskGetStackHighWaterMark(xhandleNextionHandle),
-                uxTaskGetStackHighWaterMark(currentWeather.xhandlegetWeatherHandle), 
-                esp_get_minimum_free_heap_size());
+                uxTaskGetStackHighWaterMark(currentWeather.xhandlegetWeatherHandle), esp_get_minimum_free_heap_size());
 }
 
 // Read incoming events (messages) from Nextion
