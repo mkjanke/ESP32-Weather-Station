@@ -1,6 +1,10 @@
 #ifndef HAVELED_H
 #define HAVELED_H
-
+/*----------------------------------------------------------------
+  Wrapper class to hide FastLed code from main.c 
+  Specific to M5Stamp Pico built-in LED driver
+  Handles only three colors.
+*/
 #include <FastLED.h>
 
 // FastLED

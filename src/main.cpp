@@ -1,13 +1,17 @@
+/*
+  ESP32 app to read Ruuvi tags vi BLE, Openweathermap.org forecast vai API, & display on Nextion display
+
+*/
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
 
-#include "settings.h"
+#include "led.h"
 #include "localtime.h"
 #include "nextionInterface.h"
 #include "ruuvi.h"
+#include "settings.h"
 #include "weather.h"
-#include "led.h"
 
 RuuviScan ruuviScan;
 
@@ -24,6 +28,7 @@ TaskHandle_t xhandleNextionHandle = NULL;
 Led led;
 
 void heartbeat();
+void readRuuvi();
 
 void setup() {
   delay(2000);
@@ -43,7 +48,7 @@ void setup() {
   WiFi.setHostname(DEVICE_NAME);
   WiFi.setAutoReconnect(true);
   vTaskDelay(5000 / portTICK_PERIOD_MS);
-  
+
   // Initialize OTA Update libraries
   ArduinoOTA.setHostname(DEVICE_NAME);
   ArduinoOTA.begin();
@@ -55,56 +60,15 @@ void setup() {
   xTaskCreate(getWeather, "Weather Handler", 6000, NULL, 6, &currentWeather.xhandlegetWeatherHandle);
 }
 
+unsigned long lastMillis = millis();
 void loop() {
   ArduinoOTA.handle();
-  tm timei;
-  time_t now = time(&now);
-  currentTime.now(&timei);
-  Serial.println(asctime(&timei));
-
-  ruuviScan.checkIsRunning();
-
-  // Update Nextion screen
-  // Dim screen objects if more than 10 minutes between Ruuvi reads
-  if ((now - indoorTag.lastUpdate()) < 600) {
-    led.showGreen();
-    myNex.writeNum((String) "page0.indoorTemp.val", indoorTag.getTemperatureInF());
-    myNex.writeCmd("page0.indoorTemp.pco=65535");
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    led.clear();
-
-  } else {
-    myNex.writeCmd("page0.indoorTemp.pco=19049");
+  //Every 10 seconds
+  if (millis() > lastMillis + 10000) {
+    heartbeat();
+    readRuuvi();
+    lastMillis = millis();
   }
-  if ((now - outdoorTag.lastUpdate()) < 600) {
-    led.showBlue();
-    myNex.writeNum((String) "page0.outdoorTemp.val", outdoorTag.getTemperatureInF());
-    myNex.writeCmd("page0.outdoorTemp.pco=65535");
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    led.clear();
-
-  } else {
-    myNex.writeCmd("page0.outdoorTemp.pco=19049");
-  }
-  char str[10];
-  time_t ot = outdoorTag.lastUpdate();
-  strftime(str, sizeof(str), "%a %H:%M", localtime(&ot));
-  myNex.writeStr("Setup.OutdoorStatus.txt", (String)str + " T: " + outdoorTag.getTemperatureInF());
-  time_t it = indoorTag.lastUpdate();
-  strftime(str, sizeof(str), "%a %H:%M", localtime(&it));
-  myNex.writeStr("Setup.IndoorStatus.txt", (String)str + " T: " + indoorTag.getTemperatureInF());
-  heartbeat();
-  
-  myNex.writeStr("Setup.WiFiStatus.txt", (String)"IP: " + WiFi.localIP().toString() );
-  uint8_t status = WiFi.waitForConnectResult();
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.disconnect();
-    myNex.writeStr("Setup.WiFiStatus.txt", "WiFi Disconnected" );
-    delay(5000);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  }
-
-  delay(10000);
 }
 
 // Weather thread
@@ -112,7 +76,7 @@ void loop() {
 void getWeather(void* parameter) {
   int status = 0;
   for (;;) {  // ever
-    if (WiFi.isConnected()) {    
+    if (WiFi.isConnected()) {
       led.showRed();
       Serial.println("Calling currentWeather()");
       status = currentWeather.updateCurrentWeather();
@@ -124,7 +88,7 @@ void getWeather(void* parameter) {
         myNex.writeNum((String) "page0.windDirection.val", currentWeather.getCurrentWeatherWindDirection());
         myNex.writeStr((String) "page0.City.txt", currentWeather.getCurrentWeatherCityName());
         myNex.writeCmd((String) "page0.wxIcon.pic=" +
-                      (String)weatherIconToNextionPicture(currentWeather.getCurrentWeatherIcon()));
+                       (String)weatherIconToNextionPicture(currentWeather.getCurrentWeatherIcon()));
 
         time_t now = currentWeather.getCurrentWeatherObservationTime();
         char str[20];
@@ -134,12 +98,14 @@ void getWeather(void* parameter) {
 
         // Five day forecast
         for (int i = 0; i < 5; i++) {
-          myNex.writeStr((String) "page0.dateTime" + (String)(i+1) + ".txt", currentWeather.getForecastObservationDayofWeek(i));
-          myNex.writeStr((String) "page0.forecastTxt" + (String)(i+1) + ".txt", (String)currentWeather.getForecastDescription(i));
-          myNex.writeNum((String) "page0.forecastMin" + (String)(i+1) + ".val", currentWeather.getForecastTempMin(i));
-          myNex.writeNum((String) "page0.forecastMax" + (String)(i+1) + ".val", currentWeather.getForecastTempMax(i));
-          myNex.writeCmd((String) "page0.forecastIcon" + (String)(i+1) +
-                        ".pic=" + (String)weatherIconToNextionPicture(currentWeather.getForecastIcon(i)));
+          myNex.writeStr((String) "page0.dateTime" + (String)(i + 1) + ".txt",
+                         currentWeather.getForecastObservationDayofWeek(i));
+          myNex.writeStr((String) "page0.forecastTxt" + (String)(i + 1) + ".txt",
+                         (String)currentWeather.getForecastDescription(i));
+          myNex.writeNum((String) "page0.forecastMin" + (String)(i + 1) + ".val", currentWeather.getForecastTempMin(i));
+          myNex.writeNum((String) "page0.forecastMax" + (String)(i + 1) + ".val", currentWeather.getForecastTempMax(i));
+          myNex.writeCmd((String) "page0.forecastIcon" + (String)(i + 1) +
+                         ".pic=" + (String)weatherIconToNextionPicture(currentWeather.getForecastIcon(i)));
         }
         led.clear();
       } else {
@@ -181,13 +147,68 @@ int weatherIconToNextionPicture(String iconTxt) {
   return iconMap[iconTxt];
 }
 
+
+void readRuuvi(){
+    tm timei;
+    time_t now = time(&now);
+    currentTime.now(&timei);
+    Serial.println(asctime(&timei));
+
+    ruuviScan.checkIsRunning();
+
+    // Update Nextion screen
+    // Dim screen objects if more than 10 minutes between Ruuvi reads
+    if ((now - indoorTag.lastUpdate()) < 600) {
+      led.showGreen();
+      myNex.writeNum((String) "page0.indoorTemp.val", indoorTag.getTemperatureInF());
+      myNex.writeCmd("page0.indoorTemp.pco=65535");
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      led.clear();
+
+    } else {
+      myNex.writeCmd("page0.indoorTemp.pco=19049");
+    }
+    if ((now - outdoorTag.lastUpdate()) < 600) {
+      led.showBlue();
+      myNex.writeNum((String) "page0.outdoorTemp.val", outdoorTag.getTemperatureInF());
+      myNex.writeCmd("page0.outdoorTemp.pco=65535");
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      led.clear();
+
+    } else {
+      myNex.writeCmd("page0.outdoorTemp.pco=19049");
+    }
+
+    //Update status text on Nextion
+    char str[10];
+    time_t ot = outdoorTag.lastUpdate();
+    strftime(str, sizeof(str), "%a %H:%M", localtime(&ot));
+    myNex.writeStr("Setup.OutdoorStatus.txt", (String)str + " T: " + outdoorTag.getTemperatureInF());
+    time_t it = indoorTag.lastUpdate();
+    strftime(str, sizeof(str), "%a %H:%M", localtime(&it));
+    myNex.writeStr("Setup.IndoorStatus.txt", (String)str + " T: " + indoorTag.getTemperatureInF());
+
+}
 void heartbeat() {
+  // Send heartbeat counter to Nextion
   myNex.writeNum("heartbeat", 1);
-  String status = "N: " + (String)uxTaskGetStackHighWaterMark(xhandleNextionHandle) + 
-                  " W: " + (String)uxTaskGetStackHighWaterMark(currentWeather.xhandlegetWeatherHandle) + 
+
+  //Send stack/heap infor to Nextion & Serial port
+  String status = "N: " + (String)uxTaskGetStackHighWaterMark(xhandleNextionHandle) +
+                  " W: " + (String)uxTaskGetStackHighWaterMark(currentWeather.xhandlegetWeatherHandle) +
                   " H: " + (String)esp_get_minimum_free_heap_size();
   Serial.println(status);
   myNex.writeStr("Setup.Heartbeat.txt", status);
+  
+  // Check WiFi
+  myNex.writeStr("Setup.WiFiStatus.txt", (String) "IP: " + WiFi.localIP().toString());
+  uint8_t wifiStatus = WiFi.waitForConnectResult();
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.disconnect();
+    myNex.writeStr("Setup.WiFiStatus.txt", "WiFi Disconnected");
+    delay(5000);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  }
 }
 
 // Read incoming events (messages) from Nextion
