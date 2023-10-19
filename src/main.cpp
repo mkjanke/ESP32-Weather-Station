@@ -1,6 +1,5 @@
 /*
-  ESP32 app to read Ruuvi tags vi BLE, Openweathermap.org forecast vai API, & display on Nextion display
-
+  ESP32 app to read Ruuvi tags vi BLE, Openweathermap.org forecast via API & display on Nextion display
 */
 #include <Arduino.h>
 #include <ArduinoOTA.h>

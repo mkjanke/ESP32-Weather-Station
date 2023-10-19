@@ -5,20 +5,21 @@
 
   RuuviTag Object - one instance per tag
   RuuviScan Object - one instance
-  See:  
-  
+
+  See:
+
     * [https://github.com/ruuvi/ruuvi-sensor-protocols/blob/master/dataformat_05.md]
     * [https://mybeacons.info/packetFormats.html#hiresX]
     * [https://github.com/PascalBod/ESPIDFRuuviTag/blob/master/main/ruuvi_tag.c]
 
   Listens for Ruuvi Service UUID, mfg. ID 0x0499 and mfg. data version 0x05.
-  
   Ignores all other advertisments
-
 */
-#include "settings.h"
+
 #include <vector>
+
 #include "NimBLEDevice.h"
+#include "settings.h"
 
 class RuuviTag {
  private:
@@ -50,18 +51,23 @@ class RuuviTag {
   time_t lastUpdate() { return _lastUpdate; }
 };
 
+// Create Ruuvi objects, two-node vector to help reference objects
 RuuviTag indoorTag((std::string)RUUVI_INDOOR_TAG, RUUVI_INDOOR_DESCRIPTION);
 RuuviTag outdoorTag((std::string)RUUVI_OUTDOOR_TAG, RUUVI_OUTDOOR_DESCRIPTION);
 std::vector<RuuviTag*> ruuviList = {&indoorTag, &outdoorTag};
 
+// Callback when any BLE device advertisement is received
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
   void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+
     // Ruuvi v5 serivice UUID
     NimBLEUUID serviceUuid(RUUVI_5_SERVICE_ID);
 
     if (advertisedDevice->getServiceUUID() == serviceUuid) {
       // Serial.printf("Ruuvi Device: %s \n", advertisedDevice->toString().c_str());
+
       // Look for Ruuvi mfg. ID
+      // Only ineterested in Ruuvi v5's
       if (((byte)advertisedDevice->getManufacturerData().data()[0] == 0x99) &&
           ((byte)advertisedDevice->getManufacturerData().data()[1] == 0x04)) {
         std::string output = advertisedDevice->getName() + " " + advertisedDevice->getAddress().toString() + " ";
@@ -95,13 +101,14 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
             atmPressure = ((float)((uint16_t)((MFRdata[8] << 0) | (MFRdata[7]) << 8)) + 50000);
           }
 
+          // Populate Ruuvi object(s) with data from advertisement
           for (auto element : ruuviList) {
             if (advertisedDevice->getName() == element->getName()) {
-              Serial.print(": ");
-              Serial.print(element->getDescription().c_str());
               element->setTemperature(tempInC);
               element->setHumidity(humPct);
               element->setPressure(atmPressure);
+              Serial.print(": ");
+              Serial.print(element->getDescription().c_str());
               Serial.printf(" Temperature (C): %d Temperature (F): %d Humidity(%): %d Atm Pressure: %d\n",
                             element->getTemperatureInC(), element->getTemperatureInF(), element->getHumidity(),
                             element->getPressureInMmHg());
@@ -111,7 +118,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       }
 
     } else {
-      // ruuviScan.pBLEScan->erase(advertisedDevice->getAddress());
+      advertisedDevice->getScan()->erase(advertisedDevice->getAddress());
     }
   }
 };
@@ -143,10 +150,6 @@ class RuuviScan {
       // Start scan with: duration = 0 seconds(forever), no scan end callback, not a continuation of a previous scan.
       Serial.println("Restarting Scan");
       pBLEScan->start(60, nullptr, false);
-    }
-    // Free memory from unused devices?
-    if (pBLEScan->isScanning() && (pBLEScan->getResults().getCount() > 10)) {
-      pBLEScan->stop();
     }
   }
 };
