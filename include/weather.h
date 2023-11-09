@@ -244,7 +244,7 @@ class owmWeather {
 
   // Call Openweather API
   // Populate CurrentWeather and ForecastWeather structs
-  int updateCurrentWeather() {
+  int updateWeather() {
     http.useHTTP10(true);
     http.begin(currentWeatherHost);
     // Send HTTP GET request
@@ -294,29 +294,29 @@ class owmWeather {
     return httpResponseCode;
   }
 
-  String getCurrentWeatherDescription() { return weatherNow.description; }
-  int getCurrentWeatherOutdoorTemp() { return (int)weatherNow.temp; }
-  int getCurrentWeatherHumidity() { return (int)weatherNow.humidity; }
-  int getCurrentWeatherPressure() { return (int)weatherNow.pressure; }
-  String getCurrentWeatherIcon() { return weatherNow.icon; }
-  int getCurrentWeatherWindSpeed() { return (int)weatherNow.windSpeed; }
-  int getCurrentWeatherWindDirection() { return (int)weatherNow.windDeg; }
-  String getCurrentWeatherCityName() { return _cityName; }
-  time_t getCurrentWeatherObservationTime() { return weatherNow.observationTime; }
+  String currentWeatherDescription() { return weatherNow.description; }
+  int currentOutdoorTemp() { return (int)weatherNow.temp; }
+  int currentHumidity() { return (int)weatherNow.humidity; }
+  int currentAtmPressure() { return (int)weatherNow.pressure; }
+  String currentWeatherIcon() { return weatherNow.icon; }
+  int currentWindSpeed() { return (int)weatherNow.windSpeed; }
+  int currentWindDirection() { return (int)weatherNow.windDeg; }
+  String cityName() { return _cityName; }
+  time_t observationTime() { return weatherNow.observationTime; }
 
-  time_t getForecastObservationTime(int i) { return forecast[i].observationTime; }
-  String getForecastObservationDayofWeek(int i) {
+  time_t forecastObservationTime(int i) { return forecast[i].observationTime; }
+  String forecastDayofWeek(int i) {
     char buffer[20];
     struct tm *timeinfo;
     timeinfo = localtime(&forecast[i].observationTime);
     strftime(buffer, 20, "%a %d", timeinfo);
     return (String)buffer;
   }
-  String getForecastDescription(int i) { return forecast[i].description; }
-  int getForecastTempMin(int i) { return (int)(forecast[i].tempMin + (forecast[i].tempMin >= 0 ? .5 : -.5)); }
-  int getForecastTempMax(int i) { return (int)(forecast[i].tempMax + (forecast[i].tempMax >= 0 ? .5 : -.5)); }
-  int getForecastWeatherId(int i) { return (int)forecast[i].weatherId; }
-  String getForecastIcon(int i) { return forecast[i].icon; }
+  String forecastDescription(int i) { return forecast[i].description; }
+  int forecastTempMin(int i) { return (int)(forecast[i].tempMin + (forecast[i].tempMin >= 0 ? .5 : -.5)); }
+  int forecastTempMax(int i) { return (int)(forecast[i].tempMax + (forecast[i].tempMax >= 0 ? .5 : -.5)); }
+  int forecastWeatherId(int i) { return (int)forecast[i].weatherId; }
+  String forecastIcon(int i) { return forecast[i].icon; }
   String getForecastMain(int i) { return forecast[i].main; }
 
   void dumpCurrentWeather(Stream *_stream) {

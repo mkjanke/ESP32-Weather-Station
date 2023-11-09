@@ -8,11 +8,13 @@
 #define WIFI_PASSWORD "MY Password"  // Wifi Password
 #define DEVICE_NAME "ESP-Weather"    // Network name of device
 
-#define OW_API_KEY "My Openweather API KEY"  // OpenWeather API Key
-#define OW_LAT 45                            // Location (lat/lon)
+#define OW_SCAN_TIME 3                        // OpenWeather scan period (minutes)
+#define OW_API_KEY "My Openweather API KEY"   // OpenWeather API Key
+#define OW_LAT 45                             // Location (lat/lon)
 #define OW_LON -92
 #define OW_CITY "Nowhere USA"  // City Name
 
+#define RUUVI_SCAN_TIME 10                                         //RUUVI tag scan time (seconds)  
 #define RUUVI_5_SERVICE_ID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // Service ID for Ruuvi v5 temperature sensor
 #define RUUVI_INDOOR_TAG "Ruuvi XXX"                               // Ruuvi tag name (from BLE broadcast) Set to name of your device
 #define RUUVI_INDOOR_DESCRIPTION "Indoor Device"

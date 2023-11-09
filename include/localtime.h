@@ -11,6 +11,7 @@
 */
 
 #include <WiFi.h>
+
 #include "esp_sntp.h"
 #include "time.h"
 
@@ -20,22 +21,20 @@
 
 class Time {
  private:
-
  public:
   // Call once, after WiFi is initialized.
   void begin() { configTzTime(TZ_STRING, NTP_SERVER_1, NTP_SERVER_2); }
 
   // Pass struct tm. Fill in struct with current time.
-  void now(tm *timeinfo_p) {
-    getLocalTime(timeinfo_p);
-    return;
-  }
+  bool now(tm *timeinfo_p) { return getLocalTime(timeinfo_p); }
 
   // Pass String. Update String with asciitime()
-  void now(String &time) {
+  bool now(String &time) {
     tm timeinfo;
-    getLocalTime(&timeinfo);
+    bool retVal;
+    retVal = getLocalTime(&timeinfo);
     time = (String)(asctime(&timeinfo));
+    return retVal;
   }
 
   // Access indiviual elements of tm struct

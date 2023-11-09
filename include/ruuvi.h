@@ -35,14 +35,16 @@ class RuuviTag {
     _tagname = name;
     _description = description;
   }
-  std::string getName() { return _tagname; }
-  std::string getDescription() { return _description; }
+
   void setTemperature(float temp) {
     time(&_lastUpdate);
     _temperature = temp;
   }
   void setHumidity(int humidity) { _humidity = humidity; }
   void setPressure(int pressure) { _pressure = pressure; }
+
+  std::string getName() { return _tagname; }
+  std::string getDescription() { return _description; }
   int getTemperatureInC() { return (int)(_temperature + (_temperature >= 0 ? .5 : -.5)); }
   int getTemperatureInF() { return (int)((((9.0f / 5) * (double)_temperature) + 32) + (_temperature >= 0 ? .5 : -.5)); }
   int getHumidity() { return _humidity; }
@@ -59,7 +61,6 @@ std::vector<RuuviTag*> ruuviList = {&indoorTag, &outdoorTag};
 // Callback when any BLE device advertisement is received
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
   void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
-
     // Ruuvi v5 serivice UUID
     NimBLEUUID serviceUuid(RUUVI_5_SERVICE_ID);
 
@@ -118,7 +119,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       }
 
     } else {
-      advertisedDevice->getScan()->erase(advertisedDevice->getAddress());
+      // advertisedDevice->getScan()->erase(advertisedDevice->getAddress());
     }
   }
 };
@@ -144,12 +145,12 @@ class RuuviScan {
     pBLEScan->setMaxResults(0);  // do not store the scan results, use callback only.
   }
 
-  void checkIsRunning() {
-    // If an error occurs that stops the scan, it will be restarted here.
+  // Start BLE scan, block until scanTime timeout.
+  void startRuuviScan(int scanTime) {
     if (pBLEScan->isScanning() == false) {
-      // Start scan with: duration = 0 seconds(forever), no scan end callback, not a continuation of a previous scan.
-      Serial.println("Restarting Scan");
-      pBLEScan->start(60, nullptr, false);
+      Serial.println("Starting Ruuvi Scan");
+      NimBLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+      pBLEScan->clearResults();
     }
   }
 };
