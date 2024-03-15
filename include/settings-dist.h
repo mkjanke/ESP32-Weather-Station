@@ -14,6 +14,7 @@
 #define OW_LON -92
 #define OW_CITY "Nowhere USA"  // City Name
 
+#define HEARTBEAT_INTERVAL_MILLIS 30000                            // Milliseconds between Ruuvi temp display updates
 #define RUUVI_SCAN_TIME 10                                         //RUUVI tag scan time (seconds)  
 #define RUUVI_5_SERVICE_ID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"  // Service ID for Ruuvi v5 temperature sensor
 #define RUUVI_INDOOR_TAG "Ruuvi XXX"                               // Ruuvi tag name (from BLE broadcast) Set to name of your device

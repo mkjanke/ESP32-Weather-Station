@@ -64,7 +64,7 @@ class Time {
   int month() {  //
     tm timeinfo;
     getLocalTime(&timeinfo);
-    return timeinfo.tm_mon;
+    return timeinfo.tm_mon + 1;
   }
 
   int year() {

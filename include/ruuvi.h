@@ -68,7 +68,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       // Serial.printf("Ruuvi Device: %s \n", advertisedDevice->toString().c_str());
 
       // Look for Ruuvi mfg. ID
-      // Only ineterested in Ruuvi v5's
+      // Only interested in Ruuvi v5's
       if (((byte)advertisedDevice->getManufacturerData().data()[0] == 0x99) &&
           ((byte)advertisedDevice->getManufacturerData().data()[1] == 0x04)) {
         std::string output = advertisedDevice->getName() + " " + advertisedDevice->getAddress().toString() + " ";
