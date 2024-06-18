@@ -200,7 +200,7 @@ class owmWeather {
   HTTPClient http;
   CurrentWeather weatherNow;       // Current Weather via API 3.0
   ForecastWeather forecast[8];     // Forecast - Eight day forecast availabe in API 3.0
-  StaticJsonDocument<768> filter;  // ArduinoJSON Filter Document
+  JsonDocument filter;  // ArduinoJSON Filter Document
 
   String currentWeatherHost;
 
@@ -246,6 +246,7 @@ class owmWeather {
   // Populate CurrentWeather and ForecastWeather structs
   int updateWeather() {
     http.useHTTP10(true);
+    Serial.println(currentWeatherHost);
     http.begin(currentWeatherHost);
     // Send HTTP GET request
     int httpResponseCode = http.GET();
@@ -253,38 +254,46 @@ class owmWeather {
     Serial.println(httpResponseCode);
 
     if (httpResponseCode == 200) {
-      StaticJsonDocument<2048> doc;
-      deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
-      // Serial.println("JSON DOC:");
-      // serializeJsonPretty(doc, Serial);
+      JsonDocument doc;
+      DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+      if (err) {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(err.c_str());
+      } else {
+        if (!doc.overflowed()) {
+          Serial.println("JSON DOC:");
+          serializeJsonPretty(doc, Serial);
 
-      // Extract JSON to struct elements
-      weatherNow.lon = doc["lon"].as<float>();
-      weatherNow.lat = doc["lat"].as<float>();
-      weatherNow.weatherId = doc["current"]["weather"][0]["id"].as<unsigned int>();
-      weatherNow.main = doc["current"]["weather"][0]["main"].as<String>();
-      weatherNow.description = doc["current"]["weather"][0]["description"].as<String>();
-      weatherNow.icon = doc["current"]["weather"][0]["icon"].as<String>();
-      weatherNow.temp = doc["current"]["temp"].as<float>();
-      weatherNow.feelsLike = doc["current"]["feels_like"].as<float>();
-      weatherNow.pressure = doc["current"]["pressure"].as<unsigned int>();
-      weatherNow.humidity = doc["current"]["humidity"].as<unsigned int>();
-      weatherNow.windSpeed = doc["current"]["wind_speed"].as<float>();
-      weatherNow.windDeg = doc["current"]["wind_deg"].as<float>();
-      weatherNow.clouds = doc["current"]["clouds"].as<unsigned int>();
-      weatherNow.observationTime = doc["current"]["dt"].as<time_t>();
+          // Extract JSON to struct elements
+          weatherNow.lon = doc["lon"].as<float>();
+          weatherNow.lat = doc["lat"].as<float>();
+          weatherNow.weatherId = doc["current"]["weather"][0]["id"].as<unsigned int>();
+          weatherNow.main = doc["current"]["weather"][0]["main"].as<String>();
+          weatherNow.description = doc["current"]["weather"][0]["description"].as<String>();
+          weatherNow.icon = doc["current"]["weather"][0]["icon"].as<String>();
+          weatherNow.temp = doc["current"]["temp"].as<float>();
+          weatherNow.feelsLike = doc["current"]["feels_like"].as<float>();
+          weatherNow.pressure = doc["current"]["pressure"].as<unsigned int>();
+          weatherNow.humidity = doc["current"]["humidity"].as<unsigned int>();
+          weatherNow.windSpeed = doc["current"]["wind_speed"].as<float>();
+          weatherNow.windDeg = doc["current"]["wind_deg"].as<float>();
+          weatherNow.clouds = doc["current"]["clouds"].as<unsigned int>();
+          weatherNow.observationTime = doc["current"]["dt"].as<time_t>();
 
-      // Now the 8-day forecast forecast
-      for (int i = 0; i < 8; i++) {
-        forecast[i].observationTime = doc["daily"][i]["dt"].as<time_t>();
-        forecast[i].tempMin = doc["daily"][i]["temp"]["min"].as<float>();
-        forecast[i].tempMax = doc["daily"][i]["temp"]["max"].as<float>();
-        forecast[i].weatherId = doc["daily"][i]["weather"][0]["id"].as<unsigned int>();
-        forecast[i].main = doc["daily"][i]["weather"][0]["main"].as<String>();
-        forecast[i].description = doc["daily"][i]["weather"][0]["description"].as<String>();
-        forecast[i].icon = doc["daily"][i]["weather"][0]["icon"].as<String>();
+          // Now the 8-day forecast forecast
+          for (int i = 0; i < 8; i++) {
+            forecast[i].observationTime = doc["daily"][i]["dt"].as<time_t>();
+            forecast[i].tempMin = doc["daily"][i]["temp"]["min"].as<float>();
+            forecast[i].tempMax = doc["daily"][i]["temp"]["max"].as<float>();
+            forecast[i].weatherId = doc["daily"][i]["weather"][0]["id"].as<unsigned int>();
+            forecast[i].main = doc["daily"][i]["weather"][0]["main"].as<String>();
+            forecast[i].description = doc["daily"][i]["weather"][0]["description"].as<String>();
+            forecast[i].icon = doc["daily"][i]["weather"][0]["icon"].as<String>();
+          }
+        } else {
+          Serial.println("ERROR: not enough memory to store the entire document");
+        }
       }
-
     } else {
       Serial.print("Error code: ");
       Serial.println(httpResponseCode);

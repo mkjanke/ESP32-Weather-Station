@@ -1,5 +1,5 @@
 /*
-  ESP32 app to read Ruuvi tags vi BLE, Openweathermap.org forecast via API & display on Nextion display
+  ESP32 app to read Ruuvi tags via BLE, Openweathermap.org forecast via API & display on Nextion display
 */
 #include <Arduino.h>
 #include <ArduinoOTA.h>
@@ -34,8 +34,6 @@ void readRuuvi();
 void setup() {
   Serial.begin(115200);
   delay(2000);
-  Serial.println(DEVICE_NAME + (String) " is Woke");
-
   // Start Nextion task
   myNex.begin();  // Initialize Nextion interface
   xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
@@ -55,6 +53,8 @@ void setup() {
 
   // Start SNTP task
   currentTime.begin();
+
+  Serial.println(DEVICE_NAME + (String) " is Woke");
 
   // First run - update weather
   getWeather();
@@ -149,16 +149,16 @@ int weatherIconToNextionPicture(String iconTxt) {
       {"02n", 15},  // Party Cloudy Night
       {"03d", 5},   // Cloudy Day
       {"03n", 5},   // Cloudy Night
-      {"04d", 5},   // Cloudy Daylight
-      {"04n", 5},   // Cloudy Night
-      {"09d", 1},   // Showers Day
-      {"09d", 3},   // Showers Night
+      {"04d", 10},   // Cloudy Daylight
+      {"04n", 10},   // Cloudy Night
+      {"09d", 4},   // Showers Day
+      {"09n", 4},   // Showers Night
       {"10d", 4},   // Rain Day
-      {"10n", 8},   // Rain Night
+      {"10n", 4},   // Rain Night
       {"11d", 12},  // Thunderstorm Day
-      {"11n", 10},  // Thunderstorm Night
+      {"11n", 12},  // Thunderstorm Night
       {"13d", 7},   // Snow Day
-      {"13n", 9},   // Snow Night
+      {"13n", 7},   // Snow Night
       {"50d", 0},   // Mist Day
       {"50n", 0},   // Mist Night
   };
@@ -239,7 +239,7 @@ void handleNextion(void* parameter) {
   const char filter[] = {'\x65', '\x66', '\x67', '\x68', '\x70', '\x71', '\x86', '\x87', '\xAA'};
 
   std::string _bytes;  // Raw bytes returned from Nextion, incl. \xFF terminaters
-  _bytes.reserve(48);  // Size of buffer is arbitrary.
+  _bytes.reserve(255);  // Size of buffer is arbitrary.
 
   std::string _hexString;  // _bytes converted to space delimited ASCII chars
                            // I.E. 1A B4 E4 FF FF FF
@@ -251,7 +251,7 @@ void handleNextion(void* parameter) {
     if (_bytes.length() > 0) _bytes.clear();
     if (_hexString.length() > 0) _hexString.clear();
 
-    int _len = myNex.listen(_bytes, 48);
+    int _len = myNex.listen(_bytes, 255);
     if (_len) {
       if (_len > 3) {
         _hexString.reserve(_len * 3);
