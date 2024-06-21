@@ -16,7 +16,8 @@ RuuviScan ruuviScan;
 
 owmWeather currentWeather((String)OW_CITY, (float)OW_LAT, (float)OW_LON, (String)OW_API_KEY);
 void getWeather();
-int weatherIconToNextionPicture(String);
+int weatherIconToNextionPictureLarge(String);
+int weatherIconToNextionPictureSmall(String);
 
 Time currentTime;
 void uptime();
@@ -78,6 +79,8 @@ void loop() {
   if ((millis() - weatherTimerMillis) >= OW_SCAN_TIME * 60000)
   {
     getWeather();
+    // currentWeather.dumpCurrentWeather(&Serial);
+
     weatherTimerMillis = millis();
 
     // Set Nextion Real Time Clock on bootup
@@ -108,7 +111,7 @@ void getWeather() {
       myNex.writeNum((String) "page0.windDirection.val", currentWeather.currentWindDirection());
       myNex.writeStr((String) "page0.City.txt", currentWeather.cityName());
       myNex.writeCmd((String) "page0.wxIcon.pic=" +
-                      (String)weatherIconToNextionPicture(currentWeather.currentWeatherIcon()));
+                      (String)weatherIconToNextionPictureLarge(currentWeather.currentWeatherIcon()));
 
       time_t now = currentWeather.observationTime();
       char str[20];
@@ -116,7 +119,7 @@ void getWeather() {
       myNex.writeStr("page0.statusTxt.txt", str);
       myNex.writeStr("Setup.WeatherStatus.txt", str);
 
-      // Five day forecast
+      // Five daily forecasts
       for (int i = 0; i < 5; i++) {
         myNex.writeStr((String) "page0.dateTime" + (String)(i + 1) + ".txt", currentWeather.forecastDayofWeek(i));
         myNex.writeStr((String) "page0.forecastTxt" + (String)(i + 1) + ".txt",
@@ -124,8 +127,32 @@ void getWeather() {
         myNex.writeNum((String) "page0.forecastMin" + (String)(i + 1) + ".val", currentWeather.forecastTempMin(i));
         myNex.writeNum((String) "page0.forecastMax" + (String)(i + 1) + ".val", currentWeather.forecastTempMax(i));
         myNex.writeCmd((String) "page0.forecastIcon" + (String)(i + 1) +
-                        ".pic=" + (String)weatherIconToNextionPicture(currentWeather.forecastIcon(i)));
+                        ".pic=" + (String)weatherIconToNextionPictureLarge(currentWeather.forecastIcon(i)));
       }
+      // Hourly forecast heading
+      for (int i = 0; i < 12; i+=4) {
+        myNex.writeStr((String) "Hourly.hour" + (String)(i + 1) + ".txt", currentWeather.hourlyHourofDayText(i));
+      }
+      // 12 hourly forecasts
+      for (int i = 0; i < 12; i++) {
+        myNex.writeNum((String) "Hourly.temp" + (String)(i + 1) + ".val", currentWeather.hourlyTemp(i));
+        myNex.writeCmd((String) "Hourly.clouds" + (String)(i + 1) +
+                        ".pic=" + (String)weatherIconToNextionPictureSmall(currentWeather.hourlyIcon(i)));
+        myNex.writeNum((String) "Hourly.pop" + (String)(i + 1) + ".val", currentWeather.hourlyPop(i));
+
+        // Convert rain mm/hr into 0-100 integer for Nextion progress bars
+        // Consider 5mm/hr to be full scale
+        int rain = (int)(currentWeather.hourlyPcpt(i) * 20);
+        // Serial.printf("%i : %2.2f\n",rain,currentWeather.hourlyPcpt(i));
+        if (rain > 100)
+          rain = 100;
+        myNex.writeNum((String) "Hourly.pcpt" + (String)(i + 1) + ".val", rain);
+        if(rain >= 50)
+          myNex.writeCmd((String) "Hourly.pcpt" + (String)(i + 1) + ".pco=RED");
+        else
+          myNex.writeCmd((String) "Hourly.pcpt" + (String)(i + 1) + ".pco=34815");
+      }
+
       led.clear();
     } else {
       myNex.writeStr("page0.statusTxt.txt", "OW Call Fail");
@@ -138,10 +165,10 @@ void getWeather() {
 }
 
 
-
 // Map openweathermap icon strings to Nextion picture ID's
 // See: https://openweathermap.org/weather-conditions
-int weatherIconToNextionPicture(String iconTxt) {
+// Large Icons (Daily display)
+int weatherIconToNextionPictureLarge(String iconTxt) {
   std::map<String, int> iconMap = {
       {"01d", 14},  // Clear day
       {"01n", 11},  // Clear Night
@@ -161,6 +188,32 @@ int weatherIconToNextionPicture(String iconTxt) {
       {"13n", 7},   // Snow Night
       {"50d", 0},   // Mist Day
       {"50n", 0},   // Mist Night
+  };
+
+  return iconMap[iconTxt];
+}
+
+//Small Icons (hourly display)
+int weatherIconToNextionPictureSmall(String iconTxt) {
+  std::map<String, int> iconMap = {
+      {"01d", 1},    // Clear day
+      {"01n", 2},    // Clear Night
+      {"02d", 8},    // Partly Cloudy Day
+      {"02n", 9},    // Party Cloudy Night
+      {"03d", 20},   // Cloudy Day
+      {"03n", 20},   // Cloudy Night
+      {"04d", 21},   // Cloudy Daylight
+      {"04n", 21},   // Cloudy Night
+      {"09d", 22},   // Showers Day
+      {"09n", 22},   // Showers Night
+      {"10d", 22},   // Rain Day
+      {"10n", 22},   // Rain Night
+      {"11d", 23},   // Thunderstorm Day
+      {"11n", 23},   // Thunderstorm Night
+      {"13d", 24},   // Snow Day
+      {"13n", 24},   // Snow Night
+      {"50d", 25},   // Mist Day
+      {"50n", 25},   // Mist Night
   };
 
   return iconMap[iconTxt];

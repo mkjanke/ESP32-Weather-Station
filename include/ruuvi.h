@@ -72,7 +72,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       if (((byte)advertisedDevice->getManufacturerData().data()[0] == 0x99) &&
           ((byte)advertisedDevice->getManufacturerData().data()[1] == 0x04)) {
         std::string output = advertisedDevice->getName() + " " + advertisedDevice->getAddress().toString() + " ";
-        Serial.print(output.c_str());
+        // Serial.print(output.c_str());
 
         char* manufacturerdata =
             NimBLEUtils::buildHexData(NULL, (uint8_t*)advertisedDevice->getManufacturerData().data(),
@@ -108,11 +108,11 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
               element->setTemperature(tempInC);
               element->setHumidity(humPct);
               element->setPressure(atmPressure);
-              Serial.print(": ");
-              Serial.print(element->getDescription().c_str());
-              Serial.printf(" Temperature (C): %d Temperature (F): %d Humidity(%): %d Atm Pressure: %d\n",
-                            element->getTemperatureInC(), element->getTemperatureInF(), element->getHumidity(),
-                            element->getPressureInMmHg());
+              // Serial.print(": ");
+              // Serial.print(element->getDescription().c_str());
+              // Serial.printf(" Temperature (C): %d Temperature (F): %d Humidity(%): %d Atm Pressure: %d\n",
+              //               element->getTemperatureInC(), element->getTemperatureInF(), element->getHumidity(),
+              //               element->getPressureInMmHg());
             }
           }
         }
