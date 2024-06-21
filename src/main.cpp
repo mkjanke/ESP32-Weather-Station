@@ -93,7 +93,6 @@ void loop() {
       setRTC = false;
     }
   }
-  
 }
 
 //Get weather from OpenWeatherMap
@@ -146,13 +145,10 @@ void getWeather() {
         // Serial.printf("%i : %2.2f\n",rain,currentWeather.hourlyPcpt(i));
         if (rain > 100)
           rain = 100;
+        if(rain > 0 && rain <= 5)
+          rain=5;
         myNex.writeNum((String) "Hourly.pcpt" + (String)(i + 1) + ".val", rain);
-        if(rain >= 50)
-          myNex.writeCmd((String) "Hourly.pcpt" + (String)(i + 1) + ".pco=RED");
-        else
-          myNex.writeCmd((String) "Hourly.pcpt" + (String)(i + 1) + ".pco=34815");
       }
-
       led.clear();
     } else {
       myNex.writeStr("page0.statusTxt.txt", "OW Call Fail");
@@ -163,7 +159,6 @@ void getWeather() {
     myNex.writeStr("Setup.WiFiStatus.txt", "Wifi Disconnected");
   }
 }
-
 
 // Map openweathermap icon strings to Nextion picture ID's
 // See: https://openweathermap.org/weather-conditions
