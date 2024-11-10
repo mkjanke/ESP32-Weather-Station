@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include "settings.h"
 
+/// @brief Class to handle communication with Nextion device.
+/// @param serial Serial port to which Nextion is attached
+/// @param baud Baud rate to be used for communication with Nextion
 class myNextionInterface {
  private:
   HardwareSerial* _serial;
@@ -21,9 +24,11 @@ class myNextionInterface {
   bool begin();
   void flushReads();
 
-  void writeNum(const String&, uint32_t);
-  void writeStr(const String&, const String&); 
-  void writeCmd(const String&);
+  bool writeNum(const String&, uint32_t);
+  bool writeStr(const String&, const String&); 
+  bool writeCmd(const String&);
+
+  bool setRTC(const tm);
 
   int listen(std::string&, uint8_t);
 };

@@ -4,24 +4,29 @@
 /*----------------------------------------------------------------
   Simple interface into ESP32 SNTP time
 
-    Initializes SNTP client on ESP32, provides access to current time as struct, and as individual elements.
+    Initializes SNTP client on ESP32, provides access to current time as struct and individual elements.
+    Uses Arduino libraries.
 
     begin() must be called once, after WiFi is initialized.
 
+    now(*timeinfo_p) fills in struct tm with current time. Doesn't update stored time.
+    now(String &time) updates String with asciitime(). Doe not update stored time.
+    storeCurrentTime() saves current time in private tm struct.
+    getStoredTime(String &time) retrieves previously stored time.
+    hour(), minute() & other time functions return portions of stored time
+
 */
 
+#include <Arduino.h>
 #include <WiFi.h>
-
-#include "esp_sntp.h"
-#include "time.h"
-
-#define NTP_SERVER_1 "pool.ntp.org"
-#define NTP_SERVER_2 "time.nist.gov"
-#define TZ_STRING "CST6CDT,M3.2.0,M11.1.0"  // Central time, America/Chicago
 
 class Time {
  private:
+  tm storedTime;  // Stores the last time from storeCurrentTime function
+
  public:
+  bool isTimeSet = false;  // Flag to check if time is set
+
   // Call once, after WiFi is initialized.
   void begin() { configTzTime(TZ_STRING, NTP_SERVER_1, NTP_SERVER_2); }
 
@@ -37,46 +42,74 @@ class Time {
     return retVal;
   }
 
-  // Access indiviual elements of tm struct
+  // Save current time in private tm struct.
+  bool storeCurrentTime() {
+    if (getLocalTime(&storedTime)) {  // If successful, store time
+      isTimeSet = true;
+      return true;
+    } else
+      return false;
+  }
+
+  // Retrieve previously stored time
+  bool getStoredTime(String &time) {
+    if (isTimeSet) {
+      time = (String)(asctime(&storedTime));
+      return true;
+    } else
+      return false;
+  }
+
+  // Access indiviual elements of stored tm struct
+  // Check if time has been set with setCurrentTime() function.
+  // Return '0' if not set.
+
   int hour() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_hour;
+    if (isTimeSet)
+      return storedTime.tm_hour;
+    else
+      return 0;
   }
   int minute() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_min;
+    if (isTimeSet)
+      return storedTime.tm_min;
+    else
+      return 0;
   }
 
   int second() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_sec;
+    if (isTimeSet)
+      return storedTime.tm_sec;
+    else
+      return 0;
   }
 
   int day() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_mday;
+    if (isTimeSet)
+      return storedTime.tm_mday;
+    else
+      return 0;
   }
 
-  int month() {  //
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_mon + 1;
+  int month() {
+    if (isTimeSet)
+      return storedTime.tm_mon + 1;
+    else
+      return 0;
   }
 
   int year() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_year + 1900;
+    if (isTimeSet)
+      return storedTime.tm_year + 1900;
+    else
+      return 0;
   }
 
   int dayOfWeek() {
-    tm timeinfo;
-    getLocalTime(&timeinfo);
-    return timeinfo.tm_wday;
+    if (isTimeSet)
+      return storedTime.tm_wday;
+    else
+      return 0;
   }
 };
 

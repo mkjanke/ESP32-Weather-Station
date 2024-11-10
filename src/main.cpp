@@ -1,15 +1,15 @@
 /*
   ESP32 app to read Ruuvi tags via BLE, Openweathermap.org forecast via API & display on Nextion display
 */
+#include "settings.h"
+
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
 
-#include "led.h"
 #include "localtime.h"
 #include "nextionInterface.h"
 #include "ruuvi.h"
-#include "settings.h"
 #include "weather.h"
 
 RuuviScan ruuviScan;
@@ -26,8 +26,6 @@ char uptimeBuffer[12];  // scratch space for storing formatted 'uptime' string
 myNextionInterface myNex(NEXTION_SERIAL, NEXTION_BAUD);
 void handleNextion(void*);
 TaskHandle_t xhandleNextionHandle = NULL;
-
-Led led;
 
 void heartbeat();
 void readRuuvi();
@@ -64,11 +62,10 @@ void setup() {
 
 unsigned long heartbeatMillis = millis();
 unsigned long weatherTimerMillis = millis();
-
+unsigned long RTCClockTimerMillis = millis();
 bool setRTC = true;  // Track if just rebooted
 
 void loop() {
-  tm localTime;
   ArduinoOTA.handle();
   // Every 30 seconds
   if ((millis() - heartbeatMillis) >= HEARTBEAT_INTERVAL_MILLIS) {
@@ -76,22 +73,34 @@ void loop() {
     readRuuvi();
     heartbeatMillis = millis();
   }
+  // Every OW_SCAN_TIME minutes
   if ((millis() - weatherTimerMillis) >= OW_SCAN_TIME * 60000)
   {
     getWeather();
-    // currentWeather.dumpCurrentWeather(&Serial);
-
     weatherTimerMillis = millis();
+    // currentWeather.dumpCurrentWeather(&Serial);
+  }
+  // Set Nextion Real Time Clock on bootup
+  tm localTime;
+  if (setRTC && WiFi.isConnected() && currentTime.now(&localTime)) {
+    myNex.setRTC(localTime);
+    setRTC = false;
+    Serial.println("RTC set");
+  }
 
-    // Set Nextion Real Time Clock on bootup
-    if (setRTC && currentTime.now(&localTime)) {
-      myNex.writeNum((String) "rtc0", localTime.tm_year + 1900);
-      myNex.writeNum((String) "rtc1", localTime.tm_mon + 1);
-      myNex.writeNum((String) "rtc2", localTime.tm_mday);
-      myNex.writeNum((String) "rtc3", localTime.tm_hour);
-      myNex.writeNum((String) "rtc4", localTime.tm_min);
-      setRTC = false;
+  // Every hour, check if 3am, if so set NextionRTC
+  // RTC drift is minor - this could be called less often
+  // The reason for a 3am check is to handle daylight savings time
+  if ((millis() - RTCClockTimerMillis) >= 60 * 60 * 1000) {
+    tm localTime;
+    if (WiFi.isConnected() && currentTime.now(&localTime)) {
+      if (localTime.tm_hour == 3) {
+        myNex.setRTC(localTime);
+        setRTC = false;
+        Serial.println("RTC set");
+      }
     }
+    RTCClockTimerMillis = millis();
   }
 }
 
@@ -99,7 +108,6 @@ void loop() {
 void getWeather() {
   int status = 0;
   if (WiFi.isConnected()) {
-    led.showRed();
     Serial.println("Calling currentWeather()");
     status = currentWeather.updateWeather();
     if (status == 200) {
@@ -149,7 +157,6 @@ void getWeather() {
           rain=5;
         myNex.writeNum((String) "Hourly.pcpt" + (String)(i + 1) + ".val", rain);
       }
-      led.clear();
     } else {
       myNex.writeStr("page0.statusTxt.txt", "OW Call Fail");
       myNex.writeStr("Setup.WeatherStatus.txt", "OW Call Fail");
@@ -227,21 +234,17 @@ void readRuuvi() {
   // Update Nextion screen
   // Dim screen objects if more than 10 minutes between Ruuvi reads
   if ((now - indoorTag.lastUpdate()) < 600) {
-    led.showGreen();
     myNex.writeNum((String) "page0.indoorTemp.val", indoorTag.getTemperatureInF());
     myNex.writeCmd("page0.indoorTemp.pco=65535");
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    led.clear();
 
   } else {
     myNex.writeCmd("page0.indoorTemp.pco=19049");
   }
   if ((now - outdoorTag.lastUpdate()) < 600) {
-    led.showBlue();
     myNex.writeNum((String) "page0.outdoorTemp.val", outdoorTag.getTemperatureInF());
     myNex.writeCmd("page0.outdoorTemp.pco=65535");
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    led.clear();
 
   } else {
     myNex.writeCmd("page0.outdoorTemp.pco=19049");
@@ -291,7 +294,7 @@ void handleNextion(void* parameter) {
 
   std::string _hexString;  // _bytes converted to space delimited ASCII chars
                            // I.E. 1A B4 E4 FF FF FF
-  char _x[3] = {};
+  char _x[4] = {};
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
   for (;;) {  // ever

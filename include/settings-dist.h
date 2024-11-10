@@ -8,6 +8,10 @@
 #define WIFI_PASSWORD "MY Password"  // Wifi Password
 #define DEVICE_NAME "ESP-Weather"    // Network name of device
 
+#define NTP_SERVER_1 "pool.ntp.org"
+#define NTP_SERVER_2 "time.nist.gov"
+#define TZ_STRING "CST6CDT,M3.2.0,M11.1.0"  // Central time, America/Chicago
+
 #define OW_SCAN_TIME 3                        // OpenWeather scan period (minutes)
 #define OW_API_KEY "My Openweather API KEY"   // OpenWeather API Key
 #define OW_LAT 45                             // Location (lat/lon)
